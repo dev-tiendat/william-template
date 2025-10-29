@@ -17,7 +17,7 @@ export class OAuthProviderEntity extends CommonEntity {
   @Column({ name: 'refresh_token', type: 'text', nullable: true })
   refreshToken: string
 
-  @Column({ name: 'token_expires_at', type: 'datetime', nullable: true })
+  @Column({ name: 'token_expires_at', type: 'timestamp', nullable: true })
   tokenExpiresAt: Date
 
   @Column({ name: 'provider_email', nullable: true })

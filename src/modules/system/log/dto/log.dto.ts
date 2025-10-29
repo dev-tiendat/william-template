@@ -4,10 +4,10 @@ import { IsArray, IsOptional, IsString } from 'class-validator'
 import { PagerDto } from '~/common/dto/pager.dto'
 
 export class LoginLogQueryDto extends PagerDto {
-  @ApiProperty({ description: 'Username' })
+  @ApiProperty({ description: 'User email' })
   @IsString()
   @IsOptional()
-  username: string
+  email: string
 
   @ApiProperty({ description: 'Login IP' })
   @IsOptional()
@@ -26,10 +26,10 @@ export class LoginLogQueryDto extends PagerDto {
 }
 
 export class TaskLogQueryDto extends PagerDto {
-  @ApiProperty({ description: 'Username' })
+  @ApiProperty({ description: 'User email' })
   @IsOptional()
   @IsString()
-  username: string
+  email: string
 
   @ApiProperty({ description: 'Login IP' })
   @IsString()
@@ -42,10 +42,10 @@ export class TaskLogQueryDto extends PagerDto {
 }
 
 export class CaptchaLogQueryDto extends PagerDto {
-  @ApiProperty({ description: 'Username' })
+  @ApiProperty({ description: 'User email' })
   @IsOptional()
   @IsString()
-  username: string
+  email: string
 
   @ApiProperty({ description: 'Verification code' })
   @IsString()

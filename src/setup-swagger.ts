@@ -28,7 +28,7 @@ export function setupSwagger(
 
     `)
     .setVersion('1.0')
-    .addServer(`${serverUrl}/${globalPrefix}`, 'Base URL')
+    .addServer(`http://localhost:${7001}/${globalPrefix}`, 'Base URL')
 
   documentBuilder.addSecurity(API_SECURITY_AUTH, {
     description: 'Enter the token',

@@ -39,26 +39,23 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const status = this.getStatus(exception)
     let message = this.getErrorMessage(exception)
 
-    // 系统内部错误时
     if (
       status === HttpStatus.INTERNAL_SERVER_ERROR
       && !(exception instanceof BusinessException)
     ) {
       Logger.error(exception, undefined, 'Catch')
 
-      // 生产环境下隐藏错误信息
       if (!isDev)
         message = ErrorEnum.SERVER_ERROR?.split(':')[1]
     }
     else {
       this.logger.warn(
-        `错误信息：(${status}) ${message} Path: ${decodeURI(url)}`,
+        `Error information: (${status}) ${message} Path: ${decodeURI(url)}`,
       )
     }
 
     const apiErrorCode = exception instanceof BusinessException ? exception.getErrorCode() : status
 
-    // 返回基础响应结果
     const resBody: IBaseResponse = {
       code: apiErrorCode,
       message,
@@ -73,7 +70,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
       return exception.getStatus()
     }
     else if (exception instanceof QueryFailedError) {
-      // console.log('driverError', exception.driverError.code)
       return HttpStatus.INTERNAL_SERVER_ERROR
     }
     else {

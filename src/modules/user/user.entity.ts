@@ -2,26 +2,35 @@ import { Exclude } from 'class-transformer'
 import {
   Column,
   Entity,
-  JoinColumn,
+  Index,
   JoinTable,
   ManyToMany,
-  ManyToOne,
   OneToMany,
   Relation,
 } from 'typeorm'
 
 import { CommonEntity } from '~/common/entity/common.entity'
 
+import {
+  ExperienceLevel,
+  GenderType,
+  SportType,
+  TrainingGoals,
+  UserStatus,
+} from '~/database/enums/users.enum'
+
 import { AccessTokenEntity } from '~/modules/auth/entities/access-token.entity'
 import { OAuthProviderEntity } from '~/modules/auth/entities/oauth-provider.entity'
 
-import { DeptEntity } from '~/modules/system/dept/dept.entity'
 import { RoleEntity } from '~/modules/system/role/role.entity'
 
-@Entity({ name: 'sys_user' })
+@Entity({ name: 'users' })
+@Index('idx_users_email', ['email'], { unique: true })
+@Index('idx_users_firebase_uid', ['firebaseUid'], { unique: true })
+@Index('idx_users_status', ['status'])
 export class UserEntity extends CommonEntity {
   @Column({ unique: true })
-  username: string
+  email: string
 
   @Exclude()
   @Column()
@@ -30,26 +39,101 @@ export class UserEntity extends CommonEntity {
   @Column({ length: 32 })
   psalt: string
 
-  @Column({ nullable: true })
-  nickname: string
+  @Column({
+    name: 'firebase_uid',
+    type: 'varchar',
+    length: 255,
+    unique: true,
+    nullable: true,
+  })
+  firebaseUid: string
 
-  @Column({ name: 'avatar', nullable: true })
-  avatar: string
+  @Column({
+    type: 'enum',
+    enum: UserStatus,
+    default: UserStatus.ACTIVE,
+  })
+  status: UserStatus
 
-  @Column({ nullable: true })
-  qq: string
+  @Column({
+    name: 'full_name',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
+  fullName: string
 
-  @Column({ nullable: true })
-  email: string
+  @Column({
+    name: 'date_of_birth',
+    type: 'date',
+    nullable: true,
+  })
+  dateOfBirth: Date
 
-  @Column({ nullable: true })
-  phone: string
+  @Column({
+    name: 'gender',
+    type: 'enum',
+    enum: GenderType,
+    nullable: true,
+  })
+  gender: GenderType
 
-  @Column({ nullable: true })
-  remark: string
+  @Column({
+    name: 'height',
+    type: 'integer',
+    nullable: true,
+  })
+  height: number
 
-  @Column({ type: 'tinyint', nullable: true, default: 1 })
-  status: number
+  @Column({
+    name: 'weight',
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    nullable: true,
+  })
+  weight: number
+
+  @Column({
+    name: 'weight_class',
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    nullable: true,
+  })
+  weightClass: number
+
+  @Column({
+    name: 'sport_type',
+    type: 'enum',
+    enum: SportType,
+    array: true,
+    nullable: true,
+  })
+  sportType: SportType[]
+
+  @Column({
+    name: 'training_goals',
+    type: 'enum',
+    enum: TrainingGoals,
+    nullable: true,
+  })
+  trainingGoals: TrainingGoals
+
+  @Column({
+    name: 'experience_level',
+    type: 'enum',
+    enum: ExperienceLevel,
+    nullable: true,
+  })
+  experienceLevel: ExperienceLevel
+
+  @Column({
+    name: 'avatar_url',
+    type: 'text',
+    nullable: true,
+  })
+  avatarUrl: string
 
   @ManyToMany(() => RoleEntity, role => role.users)
   @JoinTable({
@@ -58,10 +142,6 @@ export class UserEntity extends CommonEntity {
     inverseJoinColumn: { name: 'role_id', referencedColumnName: 'id' },
   })
   roles: Relation<RoleEntity[]>
-
-  @ManyToOne(() => DeptEntity, dept => dept.users)
-  @JoinColumn({ name: 'dept_id' })
-  dept: Relation<DeptEntity>
 
   @OneToMany(() => AccessTokenEntity, accessToken => accessToken.user, {
     cascade: true,

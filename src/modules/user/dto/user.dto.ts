@@ -4,32 +4,33 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   ArrayNotEmpty,
+  IsArray,
+  IsDate,
   IsEmail,
-  IsIn,
+  IsEnum,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   Matches,
+  Max,
   MaxLength,
-  MinLength,
-  ValidateIf,
+  Min,
 } from 'class-validator'
-import { isEmpty } from 'lodash'
 
 import { PagerDto } from '~/common/dto/pager.dto'
+import {
+  ExperienceLevel,
+  GenderType,
+  SportType,
+  TrainingGoals,
+  UserStatus,
+} from '~/database/enums/users.enum'
 
 export class UserDto {
-  @ApiProperty({ description: 'Avatar' })
-  @IsOptional()
-  @IsString()
-  avatar?: string
-
-  @ApiProperty({ description: 'Login account', example: 'admin' })
-  @IsString()
-  @Matches(/^[\s\S]+$/)
-  @MinLength(4)
-  @MaxLength(20)
-  username: string
+  @ApiProperty({ description: 'Email address', example: 'user@example.com' })
+  @IsEmail()
+  email: string
 
   @ApiProperty({ description: 'Login password', example: 'a123456' })
   @IsOptional()
@@ -44,55 +45,80 @@ export class UserDto {
   @ArrayMaxSize(3)
   roleIds: number[]
 
-  @ApiProperty({ description: 'Assigned department', type: Number })
-  @Type(() => Number)
+  @ApiProperty({ description: 'Firebase UID' })
+  @IsOptional()
+  @IsString()
+  firebaseUid?: string
+
+  @ApiProperty({ description: 'Full name', example: 'John Doe' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  fullName?: string
+
+  @ApiProperty({ description: 'Date of birth' })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  dateOfBirth?: Date
+
+  @ApiProperty({ description: 'Gender', enum: GenderType })
+  @IsOptional()
+  @IsEnum(GenderType)
+  gender?: GenderType
+
+  @ApiProperty({ description: 'Height in cm', example: 180 })
+  @IsOptional()
   @IsInt()
-  @IsOptional()
-  deptId?: number
+  @Min(50)
+  @Max(300)
+  height?: number
 
-  @ApiProperty({ description: 'Nickname', example: 'admin' })
+  @ApiProperty({ description: 'Weight in kg', example: 75.5 })
+  @IsOptional()
+  @IsNumber()
+  @Min(20)
+  @Max(300)
+  weight?: number
+
+  @ApiProperty({ description: 'Weight class in kg', example: 77 })
+  @IsOptional()
+  @IsNumber()
+  @Min(20)
+  @Max(300)
+  weightClass?: number
+
+  @ApiProperty({ description: 'Sport types', enum: SportType, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @IsEnum(SportType, { each: true })
+  sportType?: SportType[]
+
+  @ApiProperty({ description: 'Training goals', enum: TrainingGoals })
+  @IsOptional()
+  @IsEnum(TrainingGoals)
+  trainingGoals?: TrainingGoals
+
+  @ApiProperty({ description: 'Experience level', enum: ExperienceLevel })
+  @IsOptional()
+  @IsEnum(ExperienceLevel)
+  experienceLevel?: ExperienceLevel
+
+  @ApiProperty({ description: 'Avatar URL' })
   @IsOptional()
   @IsString()
-  nickname: string
+  avatarUrl?: string
 
-  @ApiProperty({ description: 'Email', example: 'bqy.dev@qq.com' })
-  @IsEmail()
-  @ValidateIf(o => !isEmpty(o.email))
-  email: string
-
-  @ApiProperty({ description: 'Phone number' })
-  @IsOptional()
-  @IsString()
-  phone?: string
-
-  @ApiProperty({ description: 'QQ' })
-  @IsOptional()
-  @IsString()
-  @Matches(/^[1-9]\d{4,10}$/)
-  @MinLength(5)
-  @MaxLength(11)
-  qq?: string
-
-  @ApiProperty({ description: 'Remark' })
-  @IsOptional()
-  @IsString()
-  remark?: string
-
-  @ApiProperty({ description: 'Status' })
-  @IsIn([0, 1])
-  status: number
+  @ApiProperty({ description: 'Status', enum: UserStatus })
+  @IsEnum(UserStatus)
+  status: UserStatus
 }
 
 export class UserUpdateDto extends PartialType(UserDto) {}
 
 export class UserQueryDto extends IntersectionType(PagerDto<UserDto>, PartialType(UserDto)) {
-  @ApiProperty({ description: 'Assigned department', example: 1, required: false })
-  @IsInt()
+  @ApiProperty({ description: 'Status', enum: UserStatus, required: false })
+  @IsEnum(UserStatus)
   @IsOptional()
-  deptId?: number
-
-  @ApiProperty({ description: 'Status', example: 0, required: false })
-  @IsInt()
-  @IsOptional()
-  status?: number
+  status?: UserStatus
 }

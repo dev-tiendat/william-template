@@ -16,8 +16,8 @@ export class LoginLogInfo {
   @ApiProperty({ description: 'Browser', example: 'Chrome' })
   browser: string
 
-  @ApiProperty({ description: 'Login username', example: 'admin' })
-  username: string
+  @ApiProperty({ description: 'User email', example: 'admin@example.com' })
+  email: string
 
   @ApiProperty({ description: 'Login time', example: '2023-12-22 16:46:20.333843' })
   time: string

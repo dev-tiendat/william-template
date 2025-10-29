@@ -1,4 +1,3 @@
-import type { Request } from 'express'
 import {
   CallHandler,
   ExecutionContext,
@@ -7,7 +6,6 @@ import {
   NestInterceptor,
 } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
-import qs from 'qs'
 import { Observable } from 'rxjs'
 import { map } from 'rxjs/operators'
 
@@ -30,11 +28,6 @@ export class TransformInterceptor implements NestInterceptor {
 
     if (bypass)
       return next.handle()
-
-    const http = context.switchToHttp()
-    const request = http.getRequest<Request>()
-
-    request.query = qs.parse(request.url.split('?').at(1))
 
     return next.handle().pipe(
       map((data) => {

@@ -45,49 +45,38 @@ export class MenuController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get menu or permission information' })
+  @ApiOperation({ summary: 'Get menu information' })
   @Perm(permissions.READ)
   async info(@IdParam() id: number) {
-    return this.menuService.getMenuItemAndParentInfo(id)
+    return this.menuService.getMenuItemInfo(id)
   }
 
   @Post()
-  @ApiOperation({ summary: 'Add menu or permission' })
+  @ApiOperation({ summary: 'Add menu' })
   @Perm(permissions.CREATE)
   async create(@Body(CreatorPipe) dto: MenuDto): Promise<void> {
     await this.menuService.check(dto)
-    if (!dto.parentId)
-      dto.parentId = null
-
     await this.menuService.create(dto)
-    if (dto.type === 2) {
-      await this.menuService.refreshOnlineUserPerms()
-    }
+    await this.menuService.refreshOnlineUserPerms()
   }
 
   @Put(':id')
-  @ApiOperation({ summary: 'Update menu or permission' })
+  @ApiOperation({ summary: 'Update menu' })
   @Perm(permissions.UPDATE)
   async update(@IdParam() id: number, @Body(UpdaterPipe) dto: MenuUpdateDto): Promise<void> {
     await this.menuService.check(dto)
-    if (dto.parentId === -1 || !dto.parentId)
-      dto.parentId = null
-
     await this.menuService.update(id, dto)
-    if (dto.type === 2) {
-      await this.menuService.refreshOnlineUserPerms()
-    }
+    await this.menuService.refreshOnlineUserPerms()
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete menu or permission' })
+  @ApiOperation({ summary: 'Delete menu' })
   @Perm(permissions.DELETE)
   async delete(@IdParam() id: number): Promise<void> {
     if (await this.menuService.checkRoleByMenuId(id))
       throw new BadRequestException('This menu has associated roles and cannot be deleted')
 
-    const childMenus = await this.menuService.findChildMenus(id)
-    await this.menuService.deleteMenuItem(flattenDeep([id, childMenus]))
+    await this.menuService.deleteMenuItem([id])
     await this.menuService.refreshOnlineUserPerms()
   }
 

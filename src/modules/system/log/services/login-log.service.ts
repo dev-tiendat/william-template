@@ -22,7 +22,7 @@ async function parseLoginLog(e: any, parser: UAParser): Promise<LoginLogInfo> {
     address: e.login_log_address,
     os: `${`${uaResult.os.name ?? ''} `}${uaResult.os.version}`,
     browser: `${`${uaResult.browser.name ?? ''} `}${uaResult.browser.version}`,
-    username: e.user_username,
+    email: e.user_email,
     time: e.login_log_created_at,
   }
 }
@@ -54,7 +54,7 @@ export class LoginLogService {
   async list({
     page,
     pageSize,
-    username,
+    email,
     ip,
     address,
     time,
@@ -66,9 +66,9 @@ export class LoginLogService {
         ...(ip && { ip: Like(`%${ip}%`) }),
         ...(address && { address: Like(`%${address}%`) }),
         ...(time && { createdAt: Between(time[0], time[1]) }),
-        ...(username && {
+        ...(email && {
           user: {
-            username: Like(`%${username}%`),
+            email: Like(`%${email}%`),
           },
         }),
       })

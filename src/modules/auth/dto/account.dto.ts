@@ -11,38 +11,21 @@ import {
 import { MenuEntity } from '~/modules/system/menu/menu.entity'
 
 export class AccountUpdateDto {
-  @ApiProperty({ description: 'User nickname' })
-  @IsString()
-  @IsOptional()
-  nickname: string
-
   @ApiProperty({ description: 'User email' })
   @IsOptional()
   @IsEmail()
   email: string
 
-  @ApiProperty({ description: 'User QQ' })
+  @ApiProperty({ description: 'User full name' })
   @IsOptional()
   @IsString()
-  @Matches(/^\d+$/)
-  @MinLength(5)
-  @MaxLength(11)
-  qq: string
+  @MaxLength(100)
+  fullName: string
 
-  @ApiProperty({ description: 'User phone number' })
+  @ApiProperty({ description: 'User avatar URL' })
   @IsOptional()
   @IsString()
-  phone: string
-
-  @ApiProperty({ description: 'User avatar' })
-  @IsOptional()
-  @IsString()
-  avatar: string
-
-  @ApiProperty({ description: 'User remark' })
-  @IsOptional()
-  @IsString()
-  remark: string
+  avatarUrl: string
 }
 
 export class ResetPasswordDto {
@@ -57,9 +40,18 @@ export class ResetPasswordDto {
   password: string
 }
 
-export class MenuMeta extends PartialType(OmitType(MenuEntity, ['parentId', 'createdAt', 'updatedAt', 'id', 'roles', 'path', 'name'] as const)) {
+export class MenuMeta {
+  @ApiProperty({ description: 'Menu title' })
   title: string
+
+  @ApiProperty({ description: 'Menu permission' })
+  permission?: string
+
+  @ApiProperty({ description: 'Menu status' })
+  status?: number
 }
-export class AccountMenus extends PickType(MenuEntity, ['id', 'path', 'name', 'component'] as const) {
+
+export class AccountMenus extends PickType(MenuEntity, ['id', 'path', 'name'] as const) {
+  @ApiProperty({ type: MenuMeta })
   meta: MenuMeta
 }

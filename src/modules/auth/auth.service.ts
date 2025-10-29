@@ -36,7 +36,7 @@ export class AuthService {
   ) {}
 
   async validateUser(credential: string, password: string): Promise<any> {
-    const user = await this.userService.findUserByUserName(credential)
+    const user = await this.userService.findUserByEmail(credential)
 
     if (isEmpty(user))
       throw new BusinessException(ErrorEnum.USER_NOT_FOUND)
@@ -53,13 +53,12 @@ export class AuthService {
     return null
   }
 
-  async login(
-    username: string,
+  async loginWithEmail(
+    email: string,
     password: string,
-    ip: string,
-    ua: string,
-  ): Promise<string> {
-    const user = await this.userService.findUserByUserName(username)
+
+  ): Promise<{ user: any, tokens: { accessToken: string, refreshToken: string } }> {
+    const user = await this.userService.findUserByEmail(email)
     if (isEmpty(user))
       throw new BusinessException(ErrorEnum.INVALID_USERNAME_PASSWORD)
 
@@ -80,25 +79,38 @@ export class AuthService {
     const permissions = await this.menuService.getPermissions(user.id)
     await this.setPermissionsCache(user.id, permissions)
 
-    await this.loginLogService.create(user.id, ip, ua)
+    // await this.loginLogService.create(user.id, ip, ua)
 
-    return token.accessToken
+    // Return user basic info without sensitive data
+    const { password: _, psalt, ...userBasicInfo } = user
+
+    return {
+      user: userBasicInfo,
+      tokens: {
+        accessToken: token.accessToken,
+        refreshToken: token.refreshToken,
+      },
+    }
   }
 
-  async checkPassword(username: string, password: string) {
-    const user = await this.userService.findUserByUserName(username)
+  // Deprecated: Use loginWithEmail instead
+  async login(
+    username: string,
+    password: string,
+  ): Promise<{ user: any, tokens: { accessToken: string, refreshToken: string } }> {
+    return this.loginWithEmail(username, password)
+  }
+
+  async checkPassword(email: string, password: string) {
+    const user = await this.userService.findUserByEmail(email)
 
     const comparePassword = md5(`${password}${user.psalt}`)
     if (user.password !== comparePassword)
       throw new BusinessException(ErrorEnum.INVALID_USERNAME_PASSWORD)
   }
 
-  async loginLog(uid: number, ip: string, ua: string) {
-    await this.loginLogService.create(uid, ip, ua)
-  }
-
-  async resetPassword(username: string, password: string) {
-    const user = await this.userService.findUserByUserName(username)
+  async resetPassword(email: string, password: string) {
+    const user = await this.userService.findUserByEmail(email)
 
     await this.userService.forceUpdatePassword(user.id, password)
   }
@@ -139,9 +151,7 @@ export class AuthService {
 
   async loginWithOAuth(
     oauthUser: IOAuthUser,
-    ip: string,
-    ua: string,
-  ): Promise<{ accessToken: string, isNewUser: boolean }> {
+  ): Promise<{ user: any, tokens: { accessToken: string, refreshToken: string }, isNewUser: boolean }> {
     const existingProvider = await this.oauthService.findOAuthProvider(
       oauthUser.provider,
       oauthUser.providerId,
@@ -160,14 +170,13 @@ export class AuthService {
         throw new BusinessException(ErrorEnum.OAUTH_EMAIL_REQUIRED)
       }
 
-      user = await this.userService.findUserByUserName(oauthUser.email)
+      user = await this.userService.findUserByEmail(oauthUser.email)
 
       if (!user) {
         user = await this.userService.createOAuthUser({
-          username: oauthUser.email,
           email: oauthUser.email,
-          nickname: oauthUser.name,
-          avatar: oauthUser.avatar,
+          fullName: oauthUser.name,
+          avatarUrl: oauthUser.avatar,
         })
         isNewUser = true
       }
@@ -185,8 +194,18 @@ export class AuthService {
     const permissions = await this.menuService.getPermissions(user.id)
     await this.setPermissionsCache(user.id, permissions)
 
-    await this.loginLogService.create(user.id, ip, ua)
+    // await this.loginLogService.create(user.id, ip, ua)
 
-    return { accessToken: token.accessToken, isNewUser }
+    // Return user basic info without sensitive data
+    const { password, psalt, ...userBasicInfo } = user
+
+    return {
+      user: userBasicInfo,
+      tokens: {
+        accessToken: token.accessToken,
+        refreshToken: token.refreshToken,
+      },
+      isNewUser,
+    }
   }
 }

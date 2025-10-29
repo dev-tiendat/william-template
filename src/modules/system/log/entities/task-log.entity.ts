@@ -7,7 +7,7 @@ import { TaskEntity } from '../../task/task.entity'
 
 @Entity({ name: 'sys_task_log' })
 export class TaskLogEntity extends CommonEntity {
-  @Column({ type: 'tinyint', default: 0 })
+  @Column({ type: 'smallint', default: 0 })
   @ApiProperty({ description: 'Task status: 0 failed, 1 success' })
   status: number
 

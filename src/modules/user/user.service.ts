@@ -9,22 +9,18 @@ import { InjectRedis } from '~/common/decorators/inject-redis.decorator'
 import { BusinessException } from '~/common/exceptions/biz.exception'
 import { ErrorEnum } from '~/constants/error-code.constant'
 import { ROOT_ROLE_ID, SYS_USER_INITPASSWORD } from '~/constants/system.constant'
-import { genAuthPermKey, genAuthPVKey, genAuthTokenKey, genOnlineUserKey } from '~/helper/genRedisKey'
+import { UserStatus } from '~/database/enums/users.enum'
 
+import { genAuthPermKey, genAuthPVKey, genAuthTokenKey, genOnlineUserKey } from '~/helper/genRedisKey'
 import { paginate } from '~/helper/paginate'
 import { Pagination } from '~/helper/paginate/pagination'
 import { AccountUpdateDto } from '~/modules/auth/dto/account.dto'
 import { RegisterDto } from '~/modules/auth/dto/auth.dto'
-import { QQService } from '~/shared/helper/qq.service'
 
 import { md5, randomValue } from '~/utils'
-
 import { AccessTokenEntity } from '../auth/entities/access-token.entity'
-import { DeptEntity } from '../system/dept/dept.entity'
-import { ParamConfigService } from '../system/param-config/param-config.service'
-import { RoleEntity } from '../system/role/role.entity'
 
-import { UserStatus } from './constant'
+import { RoleEntity } from '../system/role/role.entity'
 import { PasswordUpdateDto } from './dto/password.dto'
 import { UserDto, UserQueryDto, UserUpdateDto } from './dto/user.dto'
 import { UserEntity } from './user.entity'
@@ -40,28 +36,31 @@ export class UserService {
     @InjectRepository(RoleEntity)
     private readonly roleRepository: Repository<RoleEntity>,
     @InjectEntityManager() private entityManager: EntityManager,
-    private readonly paramConfigService: ParamConfigService,
-    private readonly qqService: QQService,
-  ) {}
+  ) { }
 
   async findUserById(id: number): Promise<UserEntity | undefined> {
     return this.userRepository
       .createQueryBuilder('user')
       .where({
         id,
-        status: UserStatus.Enabled,
+        status: UserStatus.ACTIVE,
       })
       .getOne()
   }
 
-  async findUserByUserName(username: string): Promise<UserEntity | undefined> {
+  async findUserByEmail(email: string): Promise<UserEntity | undefined> {
     return this.userRepository
       .createQueryBuilder('user')
       .where({
-        username,
-        status: UserStatus.Enabled,
+        email,
+        status: UserStatus.ACTIVE,
       })
       .getOne()
+  }
+
+  // Deprecated: Use findUserByEmail instead
+  async findUserByUserName(username: string): Promise<UserEntity | undefined> {
+    return this.findUserByEmail(username)
   }
 
   async getAccountInfo(uid: number): Promise<AccountInfo> {
@@ -85,17 +84,9 @@ export class UserService {
       throw new BusinessException(ErrorEnum.USER_NOT_FOUND)
 
     const data = {
-      ...(info.nickname ? { nickname: info.nickname } : null),
-      ...(info.avatar ? { avatar: info.avatar } : null),
       ...(info.email ? { email: info.email } : null),
-      ...(info.phone ? { phone: info.phone } : null),
-      ...(info.qq ? { qq: info.qq } : null),
-      ...(info.remark ? { remark: info.remark } : null),
-    }
-
-    if (!info.avatar && info.qq) {
-      if (info.qq !== user.qq)
-        data.avatar = await this.qqService.getAvater(info.qq)
+      ...(info.avatarUrl ? { avatarUrl: info.avatarUrl } : null),
+      ...(info.fullName ? { fullName: info.fullName } : null),
     }
 
     await this.userRepository.update(uid, data)
@@ -124,14 +115,13 @@ export class UserService {
   }
 
   async create({
-    username,
+    email,
     password,
     roleIds,
-    deptId,
     ...data
   }: UserDto): Promise<void> {
     const exists = await this.userRepository.findOneBy({
-      username,
+      email,
     })
     if (!isEmpty(exists))
       throw new BusinessException(ErrorEnum.SYSTEM_USER_EXISTS)
@@ -140,21 +130,17 @@ export class UserService {
       const salt = randomValue(32)
 
       if (!password) {
-        const initPassword = await this.paramConfigService.findValueByKey(
-          SYS_USER_INITPASSWORD,
-        )
-        password = md5(`${initPassword ?? '123456'}${salt}`)
+        password = md5(`${SYS_USER_INITPASSWORD ?? '123456'}${salt}`)
       }
       else {
-        password = md5(`${password ?? '123456'}${salt}`)
+        password = md5(`${password}${salt}`)
       }
       const u = manager.create(UserEntity, {
-        username,
+        email,
         password,
         ...data,
         psalt: salt,
         roles: await this.roleRepository.findBy({ id: In(roleIds) }),
-        dept: await DeptEntity.findOneBy({ id: deptId }),
       })
 
       const result = await manager.save(u)
@@ -164,7 +150,7 @@ export class UserService {
 
   async update(
     id: number,
-    { password, deptId, roleIds, status, ...data }: UserUpdateDto,
+    { password, roleIds, status, ...data }: UserUpdateDto,
   ): Promise<void> {
     await this.entityManager.transaction(async (manager) => {
       if (password)
@@ -178,7 +164,6 @@ export class UserService {
       const user = await this.userRepository
         .createQueryBuilder('user')
         .leftJoinAndSelect('user.roles', 'roles')
-        .leftJoinAndSelect('user.dept', 'dept')
         .where('user.id = :id', { id })
         .getOne()
       if (roleIds) {
@@ -188,15 +173,8 @@ export class UserService {
           .of(id)
           .addAndRemove(roleIds, user.roles)
       }
-      if (deptId) {
-        await manager
-          .createQueryBuilder()
-          .relation(UserEntity, 'dept')
-          .of(id)
-          .set(deptId)
-      }
 
-      if (status === 0) {
+      if (status === UserStatus.INACTIVE) {
         await this.forbidden(id)
       }
     })
@@ -206,7 +184,6 @@ export class UserService {
     const user = await this.userRepository
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.roles', 'roles')
-      .leftJoinAndSelect('user.dept', 'dept')
       .where('user.id = :id', { id })
       .getOne()
 
@@ -234,25 +211,18 @@ export class UserService {
   async list({
     page,
     pageSize,
-    username,
-    nickname,
-    deptId,
+    fullName,
     email,
     status,
   }: UserQueryDto): Promise<Pagination<UserEntity>> {
     const queryBuilder = this.userRepository
       .createQueryBuilder('user')
-      .leftJoinAndSelect('user.dept', 'dept')
       .leftJoinAndSelect('user.roles', 'role')
       .where({
-        ...(username ? { username: Like(`%${username}%`) } : null),
-        ...(nickname ? { nickname: Like(`%${nickname}%`) } : null),
+        ...(fullName ? { fullName: Like(`%${fullName}%`) } : null),
         ...(email ? { email: Like(`%${email}%`) } : null),
         ...(!isNil(status) ? { status } : null),
       })
-
-    if (deptId)
-      queryBuilder.andWhere('dept.id = :deptId', { deptId })
 
     return paginate<UserEntity>(queryBuilder, {
       page,
@@ -294,31 +264,35 @@ export class UserService {
       await this.redis.set(genAuthPVKey(id), Number.parseInt(v) + 1)
   }
 
-  async exist(username: string) {
-    const user = await this.userRepository.findOneBy({ username })
+  async exist(email: string) {
+    const user = await this.userRepository.findOneBy({ email })
     if (isNil(user))
       throw new BusinessException(ErrorEnum.SYSTEM_USER_EXISTS)
 
     return true
   }
 
-  async register({ username, ...data }: RegisterDto): Promise<void> {
-    const exists = await this.userRepository.findOneBy({
-      username,
-    })
+  async register({ email, password, fullName }: RegisterDto): Promise<void> {
+    const exists = await this.userRepository.findOneBy({ email })
     if (!isEmpty(exists))
       throw new BusinessException(ErrorEnum.SYSTEM_USER_EXISTS)
 
     await this.entityManager.transaction(async (manager) => {
       const salt = randomValue(32)
+      const hashedPassword = md5(`${password}${salt}`)
 
-      const password = md5(`${data.password ?? 'a123456'}${salt}`)
+      // Get default role
+      const defaultRole = await this.roleRepository.findOne({
+        where: { default: true },
+      })
 
       const u = manager.create(UserEntity, {
-        username,
-        password,
-        status: 1,
+        email,
+        password: hashedPassword,
+        fullName,
+        status: UserStatus.ACTIVE,
         psalt: salt,
+        roles: defaultRole ? [defaultRole] : [],
       })
 
       const user = await manager.save(u)
@@ -328,10 +302,10 @@ export class UserService {
   }
 
   async createOAuthUser(userData: {
-    username: string
     email: string
-    nickname?: string
-    avatar?: string
+    fullName?: string
+    avatarUrl?: string
+    firebaseUid?: string
   }): Promise<UserEntity> {
     return this.entityManager.transaction(async (manager) => {
       const salt = randomValue(32)
@@ -346,13 +320,13 @@ export class UserService {
       }
 
       const user = manager.create(UserEntity, {
-        username: userData.username,
         email: userData.email,
-        nickname: userData.nickname || userData.username,
-        avatar: userData.avatar,
+        fullName: userData.fullName || userData.email,
+        avatarUrl: userData.avatarUrl,
+        firebaseUid: userData.firebaseUid,
         password,
         psalt: salt,
-        status: UserStatus.Enabled,
+        status: UserStatus.ACTIVE,
         roles: [defaultRole],
       })
 

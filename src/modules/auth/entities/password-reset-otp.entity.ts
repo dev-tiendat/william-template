@@ -12,13 +12,13 @@ export class PasswordResetOtpEntity extends CommonEntity {
   @Column({ type: 'varchar', length: 5 })
   otp: string
 
-  @Column({ name: 'expires_at', type: 'datetime' })
+  @Column({ name: 'expires_at', type: 'timestamp' })
   expiresAt: Date
 
   @Column({ name: 'is_used', type: 'boolean', default: false })
   isUsed: boolean
 
-  @Column({ name: 'used_at', type: 'datetime', nullable: true })
+  @Column({ name: 'used_at', type: 'timestamp', nullable: true })
   usedAt: Date | null
 
   @Column({ name: 'ip_address', type: 'varchar', length: 45, nullable: true })

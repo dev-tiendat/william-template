@@ -71,9 +71,10 @@ export class JwtAuthGuard extends AuthGuard(AuthStrategy.JWT) {
 
     if (await this.redis.get(genTokenBlacklistKey(token))) {
       throw new BusinessException(ErrorEnum.INVALID_LOGIN)
+    }
 
-      // Store token in request for later use
-    }(request as any).accessToken = token
+    // Store token in request for later use
+    (request as any).accessToken = token
 
     let result: any = false
     try {

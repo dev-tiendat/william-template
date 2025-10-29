@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+  william-server:
+    image: william-server:stable
+    container_name: william-server
+    pull_policy: always
+    restart: always
+    env_file:
+      - .env
+      - .env.production
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    ports:
+      - '${APP_PORT}:${APP_PORT}'
+    networks:
+      - william_net
+
+networks:
+  william_net:
+    name: william_net
