@@ -10,9 +10,10 @@ dist
 .local
 
 # local env files
-#.env.development
-#.env.production
+.env.development
+.env.production
 .env.local
+.env
 
 .eslintcache
 
